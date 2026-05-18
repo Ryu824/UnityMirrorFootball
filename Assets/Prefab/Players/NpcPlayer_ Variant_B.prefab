@@ -1,0 +1,169 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &3620027786649912658
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 574733129576997424, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_Name
+      value: NpcPlayer_ Variant_B
+      objectReference: {fileID: 0}
+    - target: {fileID: 574733129576997424, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 2.4999995
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 2.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 2.4999995
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 55.9
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -4.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 914806941055039626, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 574733129576997424, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 797848522005035643}
+    - targetCorrespondingSourceObject: {fileID: 574733129576997424, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5844149661453489074}
+    - targetCorrespondingSourceObject: {fileID: 574733129576997424, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6202080186451927626}
+  m_SourcePrefab: {fileID: 100100000, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+--- !u!1 &3874556569200502626 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 574733129576997424, guid: 445d4f1bc69928b4dbc0f4852f7464f1, type: 3}
+  m_PrefabInstance: {fileID: 3620027786649912658}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &797848522005035643
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3874556569200502626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08bd32551a975c74da4db544f32b4d01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ball: {fileID: 0}
+  detectRadius: 1.5
+  dribbleOffset: 1.2
+  maxChargeTime: 1.5
+  minPassForce: 5
+  maxPassForce: 10
+  minShootForce: 5
+  maxShootForce: 10
+  shootElevationAngle: 0.6
+  showGizmos: 1
+  kickCooldown: 0.5
+--- !u!114 &5844149661453489074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3874556569200502626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54fe95614a69a234f803759f8edbfa41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  walkSpeed: 8
+  sprintSpeed: 15
+  turnSpeed: 10
+  accelerationTime: 1
+  decelerationTime: 0.5
+  maxStamina: 100
+  sprintCostRate: 20
+  walkRegenRate: 10
+  idleRegenRate: 25
+  currentStamina: 0
+  initialJumpForce: 7
+  continuousJumpForce: 0.5
+  maxJumpHoldTime: 0.3
+  groundCheckRadius: 0.2
+  groundCheckOffset: {x: 0, y: 0.1, z: 0}
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  isAIControlled: 1
+--- !u!114 &6202080186451927626
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3874556569200502626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 547ed4c368f9ae145aaf7216e6eac7fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  team: 2
+  roleConfig: {fileID: 11400000, guid: 21bcb79394b17464394dcdfcf1e37116, type: 2}
+  ballTransform: {fileID: 0}
+  myGoalTransform: {fileID: 0}
+  opponentGoalTransform: {fileID: 0}
+  chaseRadius: 100
+  minDistanceToPlayers: 20
+  teammates:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  movement: {fileID: 0}
+  dribble: {fileID: 0}
