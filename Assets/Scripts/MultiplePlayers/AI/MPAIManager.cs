@@ -12,6 +12,10 @@ namespace MultiplePlayers
         [SerializeField] private GameObject aiPlayerPrefab;
         [SerializeField] private int targetPlayersPerTeam = 5;
 
+        [Header("Formation Offsets")]
+        [SerializeField] private float duplicateFormationXOffset = 0.8f;
+        [SerializeField] private float duplicateFormationZOffset = 1.2f;
+
         [Header("Debug")]
         [SerializeField] private bool verboseLog = true;
 
@@ -37,7 +41,33 @@ namespace MultiplePlayers
 
         private void Awake()
         {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
             Instance = this;
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
+        public override void OnStartServer()
+        {
+            base.OnStartServer();
+            spawnedForCurrentMatch = false;
+        }
+
+        public override void OnStopServer()
+        {
+            spawnedForCurrentMatch = false;
+            base.OnStopServer();
         }
 
         [Server]
@@ -69,28 +99,36 @@ namespace MultiplePlayers
                 Debug.Log($"[MPAIManager] Team {team}: current={currentCount}, need AI={need}");
             }
 
-            List<MPPlayerPosition> spawnPositions =
-                ServerBuildSpawnPositionList(team, need);
+            List<MPPlayerPosition> spawnPositions = ServerBuildSpawnPositionList(team, need);
+            Dictionary<MPPlayerPosition, int> positionSpawnCounts =
+                new Dictionary<MPPlayerPosition, int>();
 
             for (int i = 0; i < spawnPositions.Count; i++)
             {
                 MPPlayerPosition position = spawnPositions[i];
+                int positionIndex = 0;
 
-                Transform spawnPoint =
-                    ServerFindFormationPoint(team, position, i);
+                if (positionSpawnCounts.TryGetValue(position, out int existingCount))
+                {
+                    positionIndex = existingCount;
+                }
 
-                Vector3 spawnPos = spawnPoint != null
-                    ? spawnPoint.position
-                    : ServerGetFallbackSpawnPosition(team, i);
+                positionSpawnCounts[position] = positionIndex + 1;
 
-                Quaternion spawnRot = spawnPoint != null
+                Transform spawnPoint = ServerFindFormationPoint(team, position, positionIndex);
+                Vector3 formationOffset = ServerGetFormationOffset(team, positionIndex);
+
+                Vector3 spawnPosition = spawnPoint != null
+                    ? spawnPoint.position + formationOffset
+                    : ServerGetFallbackSpawnPosition(team, i) + formationOffset;
+
+                Quaternion spawnRotation = spawnPoint != null
                     ? spawnPoint.rotation
                     : Quaternion.LookRotation(MPTeamUtility.GetAttackDirection(team), Vector3.up);
 
-                GameObject aiObject = Instantiate(aiPlayerPrefab, spawnPos, spawnRot);
+                GameObject aiObject = Instantiate(aiPlayerPrefab, spawnPosition, spawnRotation);
 
-                MPPlayerTeamState teamState =
-                    aiObject.GetComponent<MPPlayerTeamState>();
+                MPPlayerTeamState teamState = aiObject.GetComponent<MPPlayerTeamState>();
 
                 if (teamState != null)
                 {
@@ -108,7 +146,7 @@ namespace MultiplePlayers
 
                 if (aiController != null)
                 {
-                    aiController.ServerInitialize(team, position, spawnPoint);
+                    aiController.ServerInitialize(team, position, spawnPoint, formationOffset);
                 }
                 else
                 {
@@ -120,9 +158,7 @@ namespace MultiplePlayers
         }
 
         [Server]
-        private List<MPPlayerPosition> ServerBuildSpawnPositionList(
-            MPTeamId team,
-            int need)
+        private List<MPPlayerPosition> ServerBuildSpawnPositionList(MPTeamId team, int need)
         {
             List<MPPlayerPosition> result = new List<MPPlayerPosition>();
 
@@ -130,20 +166,16 @@ namespace MultiplePlayers
                 return result;
 
             HashSet<MPPlayerPosition> occupied = new HashSet<MPPlayerPosition>();
-
-            MPPlayerTeamState[] allPlayers =
-                FindObjectsByType<MPPlayerTeamState>(FindObjectsSortMode.None);
+            List<MPPlayerTeamState> allPlayers = ServerGetTeamPlayers(team);
 
             foreach (MPPlayerTeamState player in allPlayers)
             {
-                if (player == null || player.TeamId != team)
-                    continue;
-
-                if (player.Position != MPPlayerPosition.None)
+                if (player != null && player.Position != MPPlayerPosition.None)
+                {
                     occupied.Add(player.Position);
+                }
             }
 
-            // 先补齐缺失的基础位置：门将、后卫、中场、前锋
             foreach (MPPlayerPosition position in corePositions)
             {
                 if (result.Count >= need)
@@ -156,8 +188,8 @@ namespace MultiplePlayers
                 }
             }
 
-            // 如果还没凑够 5v5，就按顺序补重复位置
             int duplicateIndex = 0;
+
             while (result.Count < need)
             {
                 MPPlayerPosition position =
@@ -173,7 +205,13 @@ namespace MultiplePlayers
         [Server]
         public int ServerCountTeamPlayers(MPTeamId team)
         {
-            int count = 0;
+            return ServerGetTeamPlayers(team).Count;
+        }
+
+        [Server]
+        public List<MPPlayerTeamState> ServerGetTeamPlayers(MPTeamId team)
+        {
+            List<MPPlayerTeamState> result = new List<MPPlayerTeamState>();
 
             MPPlayerTeamState[] allPlayers =
                 FindObjectsByType<MPPlayerTeamState>(FindObjectsSortMode.None);
@@ -181,33 +219,46 @@ namespace MultiplePlayers
             foreach (MPPlayerTeamState player in allPlayers)
             {
                 if (player != null && player.TeamId == team)
-                    count++;
+                {
+                    result.Add(player);
+                }
             }
 
-            return count;
+            return result;
         }
 
         [Server]
-        public MPAIPlayerController ServerFindBestChaser(
-            MPTeamId team,
-            Vector3 ballPosition)
+        public List<MPAIPlayerController> ServerGetTeamAIs(MPTeamId team)
         {
-            MPAIPlayerController best = null;
-            float bestSqrDistance = float.MaxValue;
+            List<MPAIPlayerController> result = new List<MPAIPlayerController>();
 
             MPAIPlayerController[] allAIs =
                 FindObjectsByType<MPAIPlayerController>(FindObjectsSortMode.None);
 
             foreach (MPAIPlayerController ai in allAIs)
             {
-                if (ai == null || ai.TeamId != team)
+                if (ai != null && ai.TeamId == team)
+                {
+                    result.Add(ai);
+                }
+            }
+
+            return result;
+        }
+
+        [Server]
+        public MPAIPlayerController ServerGetBestChaser(MPTeamId team, Vector3 ballPosition)
+        {
+            MPAIPlayerController best = null;
+            float bestSqrDistance = float.MaxValue;
+            List<MPAIPlayerController> allAIs = ServerGetTeamAIs(team);
+
+            foreach (MPAIPlayerController ai in allAIs)
+            {
+                if (ai == null || !ai.ServerCanChaseBallAt(ballPosition))
                     continue;
 
-                if (!ai.ServerCanChaseBallAt(ballPosition))
-                    continue;
-
-                float sqrDistance =
-                    (ai.transform.position - ballPosition).sqrMagnitude;
+                float sqrDistance = (ai.transform.position - ballPosition).sqrMagnitude;
 
                 if (sqrDistance < bestSqrDistance)
                 {
@@ -253,8 +304,22 @@ namespace MultiplePlayers
         {
             float x = team == MPTeamId.Red ? -12f : 12f;
             float z = -6f + index * 3f;
-
             return new Vector3(x, 1f, z);
+        }
+
+        [Server]
+        private Vector3 ServerGetFormationOffset(MPTeamId team, int positionIndex)
+        {
+            if (positionIndex <= 0)
+                return Vector3.zero;
+
+            float side = team == MPTeamId.Red ? 1f : -1f;
+            float xOffset = duplicateFormationXOffset * positionIndex * side;
+            float zOffset = positionIndex % 2 == 0
+                ? duplicateFormationZOffset
+                : -duplicateFormationZOffset;
+
+            return new Vector3(xOffset, 0f, zOffset);
         }
     }
 }

@@ -243,6 +243,40 @@ namespace MultiplePlayers
         }
 
         [Server]
+        public void ServerKickLooseBall(
+            NetworkIdentity kicker,
+            Vector3 direction,
+            float force,
+            float reControlCooldown)
+        {
+            if (MPGameSession.Instance != null && !MPGameSession.IsMatchControllable)
+                return;
+
+            if (kicker == null)
+                return;
+
+            if (direction.sqrMagnitude < 0.01f)
+                direction = kicker.transform.forward;
+
+            direction.Normalize();
+
+            ServerRegisterTouch(kicker);
+
+            state = MPBallState.Kicked;
+            controllerNetId = 0;
+            canBeControlledTime = NetworkTime.time + reControlCooldown;
+
+            rb.constraints = originalConstraints;
+
+            if (ballCollider != null)
+                ballCollider.isTrigger = false;
+
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.AddForce(direction * force, ForceMode.VelocityChange);
+        }
+
+        [Server]
         public void ServerStopAndClearControl(float controlCooldown = 0.2f)
         {
             state = MPBallState.Free;
@@ -360,12 +394,22 @@ namespace MultiplePlayers
             MPNetworkPlayerController player =
                 playerIdentity.GetComponent<MPNetworkPlayerController>();
 
-            if (player == null || player.Team == MPTeam.None)
+            if (player != null && player.Team != MPTeam.None)
+            {
+                lastTouchTeam = player.Team;
+                lastTouchPlayerNetId = playerIdentity.netId;
+                return;
+            }
+
+            MPPlayerTeamState teamState =
+                playerIdentity.GetComponent<MPPlayerTeamState>();
+
+            if (teamState == null || teamState.MatchTeam == MPTeam.None)
             {
                 return;
             }
 
-            lastTouchTeam = player.Team;
+            lastTouchTeam = teamState.MatchTeam;
             lastTouchPlayerNetId = playerIdentity.netId;
         }
 

@@ -18,10 +18,9 @@ GameObject:
   - component: {fileID: 7136297108418405863}
   - component: {fileID: 3152029813916317953}
   - component: {fileID: 6696274800378058812}
-  - component: {fileID: 7807788903356837535}
-  - component: {fileID: 6926789211159320231}
   - component: {fileID: 682992725340487778}
   - component: {fileID: 5531974059045928573}
+  - component: {fileID: 2739105303461573057}
   m_Layer: 6
   m_Name: MPAIPlayerPrefab
   m_TagString: Player
@@ -285,40 +284,6 @@ MonoBehaviour:
   maxChargeTime: 1.2
   aimYawSpeed: 180
   useCameraForwardWhenAvailable: 1
---- !u!114 &7807788903356837535
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 74911289973858909}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7f6f3bf89aa97405989c802ba270f815, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  syncDirection: 1
-  syncMode: 0
-  syncInterval: 0
-  clientAuthority: 0
-  animator: {fileID: 0}
---- !u!114 &6926789211159320231
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 74911289973858909}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7f6f3bf89aa97405989c802ba270f815, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  syncDirection: 1
-  syncMode: 0
-  syncInterval: 0
-  clientAuthority: 0
-  animator: {fileID: 2762140894462079342}
 --- !u!114 &682992725340487778
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -334,7 +299,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  animator: {fileID: 0}
+  animator: {fileID: 2762140894462079342}
   runSpeedReference: 5
   speedDampTime: 0.1
   sendInterval: 0.08
@@ -358,6 +323,41 @@ MonoBehaviour:
   TeamId: 0
   Position: 0
   ControlType: 0
+--- !u!114 &2739105303461573057
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 74911289973858909}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d76af8d7162dc9d48a471a689b553249, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  teamId: 0
+  position: 0
+  moveSpeed: 4.5
+  rotationSpeed: 540
+  stopDistance: 0.35
+  chaseDistance: 14
+  kickDistance: 1.8
+  kickCooldown: 0.8
+  looseBallRecontrolCooldown: 0.35
+  goalkeeperChaseDistanceFromOwnGoal: 16
+  goalkeeperMaxLeaveGoalDistance: 12
+  passForce: 9
+  clearForce: 13
+  shootForce: 15
+  passUpRatio: 0.05
+  clearUpRatio: 0.12
+  shootUpRatio: 0.08
+  minForwardPassDistance: 2
+  maxPassDistance: 24
+  verboseLog: 0
 --- !u!1 &8520450541001302973
 GameObject:
   m_ObjectHideFlags: 0

@@ -12,6 +12,7 @@ namespace MultiplePlayers
 
         public bool HasValidSelection =>
             TeamId != MPTeamId.None && Position != MPPlayerPosition.None;
+        public MPTeam MatchTeam => ToMatchTeam(TeamId);
 
         [Command]
         public void CmdRequestSelectTeam(MPTeamId team, MPPlayerPosition position)
@@ -37,8 +38,36 @@ namespace MultiplePlayers
 
             TeamId = team;
             Position = position;
+            ServerApplyMatchTeam();
 
             Debug.Log($"[TeamState] {netId} selected {TeamId} / {Position}");
+        }
+
+        [Server]
+        public void ServerApplyMatchTeam()
+        {
+            MPNetworkPlayerController playerController =
+                GetComponent<MPNetworkPlayerController>();
+
+            if (playerController != null)
+            {
+                playerController.ServerSetTeam(ToMatchTeam(TeamId));
+            }
+        }
+
+        public static MPTeam ToMatchTeam(MPTeamId teamId)
+        {
+            switch (teamId)
+            {
+                case MPTeamId.Red:
+                    return MPTeam.RedLeft;
+
+                case MPTeamId.Blue:
+                    return MPTeam.BlueRight;
+
+                default:
+                    return MPTeam.None;
+            }
         }
 
         [Server]

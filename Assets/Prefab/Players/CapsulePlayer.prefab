@@ -22,7 +22,6 @@ GameObject:
   - component: {fileID: 1431909631611749390}
   - component: {fileID: 6696274800378058812}
   - component: {fileID: 7807788903356837535}
-  - component: {fileID: 6926789211159320231}
   - component: {fileID: 682992725340487778}
   - component: {fileID: 5531974059045928573}
   m_Layer: 6
@@ -374,23 +373,6 @@ MonoBehaviour:
   syncInterval: 0
   clientAuthority: 0
   animator: {fileID: 0}
---- !u!114 &6926789211159320231
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 74911289973858909}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7f6f3bf89aa97405989c802ba270f815, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  syncDirection: 1
-  syncMode: 0
-  syncInterval: 0
-  clientAuthority: 0
-  animator: {fileID: 2762140894462079342}
 --- !u!114 &682992725340487778
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -406,7 +388,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  animator: {fileID: 0}
+  animator: {fileID: 2762140894462079342}
   runSpeedReference: 5
   speedDampTime: 0.1
   sendInterval: 0.08
@@ -424,6 +406,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 442a1f0b88b0b4740814c59268ca305f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  TeamId: 0
+  Position: 0
+  ControlType: 0
 --- !u!1 &8520450541001302973
 GameObject:
   m_ObjectHideFlags: 0

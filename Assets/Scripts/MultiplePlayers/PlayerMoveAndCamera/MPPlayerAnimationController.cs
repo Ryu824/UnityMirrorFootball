@@ -203,5 +203,28 @@ namespace MultiplePlayers
 
             remoteTargetGrounded = newValue;
         }
+
+        [Server]
+        public void ServerSetMoveSpeed(float speed01)
+        {
+            float clamped = Mathf.Clamp01(speed01);
+            syncedSpeed = clamped;
+
+            if (!isLocalPlayer)
+            {
+                remoteTargetSpeed = clamped;
+            }
+        }
+
+        [Server]
+        public void ServerSetGrounded(bool grounded)
+        {
+            syncedGrounded = grounded;
+
+            if (!isLocalPlayer)
+            {
+                remoteTargetGrounded = grounded;
+            }
+        }
     }
 }

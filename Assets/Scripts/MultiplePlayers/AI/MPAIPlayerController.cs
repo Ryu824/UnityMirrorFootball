@@ -4,6 +4,7 @@ using UnityEngine;
 namespace MultiplePlayers
 {
     [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(NetworkIdentity))]
     public class MPAIPlayerController : NetworkBehaviour
     {
         private enum AIState
@@ -27,6 +28,7 @@ namespace MultiplePlayers
         [SerializeField] private float chaseDistance = 14f;
         [SerializeField] private float kickDistance = 1.8f;
         [SerializeField] private float kickCooldown = 0.8f;
+        [SerializeField] private float looseBallRecontrolCooldown = 0.35f;
 
         [Header("Goalkeeper")]
         [SerializeField] private float goalkeeperChaseDistanceFromOwnGoal = 16f;
@@ -35,8 +37,10 @@ namespace MultiplePlayers
         [Header("Kick / Pass")]
         [SerializeField] private float passForce = 9f;
         [SerializeField] private float clearForce = 13f;
+        [SerializeField] private float shootForce = 15f;
         [SerializeField] private float passUpRatio = 0.05f;
         [SerializeField] private float clearUpRatio = 0.12f;
+        [SerializeField] private float shootUpRatio = 0.08f;
         [SerializeField] private float minForwardPassDistance = 2f;
         [SerializeField] private float maxPassDistance = 24f;
 
@@ -44,7 +48,10 @@ namespace MultiplePlayers
         [SerializeField] private bool verboseLog = false;
 
         private Rigidbody rb;
+        private NetworkIdentity cachedIdentity;
+        private MPPlayerAnimationController animationController;
         private Transform formationPoint;
+        private Vector3 formationOffset;
         private MPNetworkBall ball;
         private AIState currentState;
         private double nextKickAllowedTime;
@@ -55,25 +62,28 @@ namespace MultiplePlayers
         private void Awake()
         {
             rb = GetComponent<Rigidbody>();
+            cachedIdentity = GetComponent<NetworkIdentity>();
+            animationController = GetComponent<MPPlayerAnimationController>();
         }
 
         [Server]
         public void ServerInitialize(
             MPTeamId newTeam,
             MPPlayerPosition newPosition,
-            Transform newFormationPoint)
+            Transform newFormationPoint,
+            Vector3 newFormationOffset)
         {
             teamId = newTeam;
             position = newPosition;
             formationPoint = newFormationPoint;
+            formationOffset = newFormationOffset;
         }
 
         public override void OnStartServer()
         {
             base.OnStartServer();
 
-            MPPlayerTeamState teamState =
-                GetComponent<MPPlayerTeamState>();
+            MPPlayerTeamState teamState = GetComponent<MPPlayerTeamState>();
 
             if (teamState != null)
             {
@@ -82,6 +92,23 @@ namespace MultiplePlayers
             }
 
             ServerFindBall();
+            ServerSetAnimationGrounded(true);
+        }
+
+        public override void OnStartClient()
+        {
+            base.OnStartClient();
+
+            if (isServer)
+                return;
+
+            if (rb == null)
+            {
+                rb = GetComponent<Rigidbody>();
+            }
+
+            rb.isKinematic = true;
+            rb.useGravity = false;
         }
 
         [ServerCallback]
@@ -95,7 +122,9 @@ namespace MultiplePlayers
             }
 
             if (ball == null)
+            {
                 ServerFindBall();
+            }
 
             if (ball == null)
             {
@@ -136,8 +165,8 @@ namespace MultiplePlayers
         [Server]
         private void ServerUpdateState()
         {
-            Vector3 ballPos = ball.transform.position;
-            float sqrToBall = (transform.position - ballPos).sqrMagnitude;
+            Vector3 ballPosition = ball.transform.position;
+            float sqrToBall = (transform.position - ballPosition).sqrMagnitude;
 
             if (sqrToBall <= kickDistance * kickDistance)
             {
@@ -149,8 +178,7 @@ namespace MultiplePlayers
 
             if (MPAIManager.Instance != null)
             {
-                bestChaser =
-                    MPAIManager.Instance.ServerFindBestChaser(teamId, ballPos);
+                bestChaser = MPAIManager.Instance.ServerGetBestChaser(teamId, ballPosition);
             }
 
             if (bestChaser == this)
@@ -170,30 +198,22 @@ namespace MultiplePlayers
             if (sqrToBall > chaseDistance * chaseDistance)
                 return false;
 
-            if (position == MPPlayerPosition.Goalkeeper)
-            {
-                Vector3 ownGoal = MPTeamUtility.GetOwnGoalPosition(teamId);
+            if (position != MPPlayerPosition.Goalkeeper)
+                return true;
 
-                float sqrBallToOwnGoal =
-                    (ballPosition - ownGoal).sqrMagnitude;
+            Vector3 ownGoal = MPTeamUtility.GetOwnGoalPosition(teamId);
+            float sqrBallToOwnGoal = (ballPosition - ownGoal).sqrMagnitude;
+            float sqrSelfToOwnGoal = (transform.position - ownGoal).sqrMagnitude;
 
-                float sqrSelfToOwnGoal =
-                    (transform.position - ownGoal).sqrMagnitude;
+            bool ballNearGoal =
+                sqrBallToOwnGoal <=
+                goalkeeperChaseDistanceFromOwnGoal * goalkeeperChaseDistanceFromOwnGoal;
 
-                bool ballNearGoal =
-                    sqrBallToOwnGoal <=
-                    goalkeeperChaseDistanceFromOwnGoal *
-                    goalkeeperChaseDistanceFromOwnGoal;
+            bool keeperNotTooFar =
+                sqrSelfToOwnGoal <=
+                goalkeeperMaxLeaveGoalDistance * goalkeeperMaxLeaveGoalDistance;
 
-                bool keeperNotTooFar =
-                    sqrSelfToOwnGoal <=
-                    goalkeeperMaxLeaveGoalDistance *
-                    goalkeeperMaxLeaveGoalDistance;
-
-                return ballNearGoal && keeperNotTooFar;
-            }
-
-            return true;
+            return ballNearGoal && keeperNotTooFar;
         }
 
         [Server]
@@ -209,29 +229,25 @@ namespace MultiplePlayers
                 return;
             }
 
-            Vector3 moveDir = direction.normalized;
-            Vector3 nextPosition =
-                current + moveDir * moveSpeed * Time.fixedDeltaTime;
+            Vector3 moveDirection = direction.normalized;
+            Vector3 nextPosition = current + moveDirection * moveSpeed * Time.fixedDeltaTime;
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
+            Quaternion nextRotation = Quaternion.RotateTowards(
+                rb.rotation,
+                targetRotation,
+                rotationSpeed * Time.fixedDeltaTime);
 
             rb.MovePosition(nextPosition);
-
-            Quaternion targetRotation =
-                Quaternion.LookRotation(moveDir, Vector3.up);
-
-            Quaternion nextRotation =
-                Quaternion.RotateTowards(
-                    rb.rotation,
-                    targetRotation,
-                    rotationSpeed * Time.fixedDeltaTime);
-
             rb.MoveRotation(nextRotation);
 
-            ServerSendMoveSpeed(moveSpeed);
+            ServerSendMoveSpeed(1f);
         }
 
         [Server]
         private void ServerStopMove()
         {
+            rb.velocity = new Vector3(0f, rb.velocity.y, 0f);
+            rb.angularVelocity = Vector3.zero;
             ServerSendMoveSpeed(0f);
         }
 
@@ -239,20 +255,18 @@ namespace MultiplePlayers
         private Vector3 ServerGetFormationPosition()
         {
             if (formationPoint != null)
-                return formationPoint.position;
+            {
+                return formationPoint.position + formationOffset;
+            }
 
             if (MPAIManager.Instance != null)
             {
-                Transform found =
-                    MPAIManager.Instance.ServerFindFormationPoint(
-                        teamId,
-                        position,
-                        0);
+                Transform found = MPAIManager.Instance.ServerFindFormationPoint(teamId, position, 0);
 
                 if (found != null)
                 {
                     formationPoint = found;
-                    return formationPoint.position;
+                    return formationPoint.position + formationOffset;
                 }
             }
 
@@ -268,8 +282,7 @@ namespace MultiplePlayers
             if (ball == null)
                 return;
 
-            Transform targetTeammate =
-                ServerFindForwardTeammate();
+            Transform targetTeammate = ServerFindForwardTeammate();
 
             if (targetTeammate != null)
             {
@@ -277,12 +290,12 @@ namespace MultiplePlayers
                 direction.y = 0f;
 
                 if (direction.sqrMagnitude < 0.01f)
+                {
                     direction = MPTeamUtility.GetAttackDirection(teamId);
-
-                direction.Normalize();
+                }
 
                 Vector3 finalDirection =
-                    (direction + Vector3.up * passUpRatio).normalized;
+                    (direction.normalized + Vector3.up * passUpRatio).normalized;
 
                 ServerApplyBallForce(finalDirection, passForce);
 
@@ -293,15 +306,32 @@ namespace MultiplePlayers
             }
             else
             {
-                Vector3 direction = MPTeamUtility.GetAttackDirection(teamId);
-                Vector3 finalDirection =
-                    (direction + Vector3.up * clearUpRatio).normalized;
+                Vector3 clearDirection = MPTeamUtility.GetAttackDirection(teamId);
+                Vector3 shootDirection =
+                    MPTeamUtility.GetOpponentGoalPosition(teamId) - ball.transform.position;
+                shootDirection.y = 0f;
 
-                ServerApplyBallForce(finalDirection, clearForce);
-
-                if (verboseLog)
+                if (shootDirection.sqrMagnitude > 0.01f)
                 {
-                    Debug.Log($"[MPAI] {name} clear forward");
+                    Vector3 finalDirection =
+                        (shootDirection.normalized + Vector3.up * shootUpRatio).normalized;
+                    ServerApplyBallForce(finalDirection, shootForce);
+
+                    if (verboseLog)
+                    {
+                        Debug.Log($"[MPAI] {name} shoot forward");
+                    }
+                }
+                else
+                {
+                    Vector3 finalDirection =
+                        (clearDirection.normalized + Vector3.up * clearUpRatio).normalized;
+                    ServerApplyBallForce(finalDirection, clearForce);
+
+                    if (verboseLog)
+                    {
+                        Debug.Log($"[MPAI] {name} clear forward");
+                    }
                 }
             }
 
@@ -316,38 +346,30 @@ namespace MultiplePlayers
 
             Transform best = null;
             float bestScore = float.NegativeInfinity;
-
-            Vector3 selfPos = transform.position;
-            Vector3 attackDir = MPTeamUtility.GetAttackDirection(teamId);
+            Vector3 selfPosition = transform.position;
+            Vector3 attackDirection = MPTeamUtility.GetAttackDirection(teamId);
+            Vector3 lateralAxis = Vector3.Cross(Vector3.up, attackDirection);
 
             foreach (MPPlayerTeamState player in players)
             {
-                if (player == null)
+                if (player == null || player.TeamId != teamId || player.transform == transform)
                     continue;
 
-                if (player.TeamId != teamId)
-                    continue;
+                Vector3 toTeammate = player.transform.position - selfPosition;
+                toTeammate.y = 0f;
 
-                if (player.transform == transform)
-                    continue;
-
-                Vector3 teammatePos = player.transform.position;
-                Vector3 toMate = teammatePos - selfPos;
-                toMate.y = 0f;
-
-                float distance = toMate.magnitude;
+                float distance = toTeammate.magnitude;
 
                 if (distance < 1.5f || distance > maxPassDistance)
                     continue;
 
-                float forwardAmount = Vector3.Dot(toMate, attackDir);
+                float forwardAmount = Vector3.Dot(toTeammate, attackDirection);
 
                 if (forwardAmount < minForwardPassDistance)
                     continue;
 
-                // 越靠前越优先，同时轻微惩罚横向距离太大的队友
                 float lateralPenalty =
-                    Mathf.Abs(Vector3.Dot(toMate, Vector3.forward)) * 0.15f;
+                    Mathf.Abs(Vector3.Dot(toTeammate, lateralAxis)) * 0.15f;
 
                 float score = forwardAmount - lateralPenalty;
 
@@ -364,23 +386,14 @@ namespace MultiplePlayers
         [Server]
         private void ServerApplyBallForce(Vector3 direction, float force)
         {
-            if (ball == null)
+            if (ball == null || cachedIdentity == null)
                 return;
 
-            ball.ServerStopAndClearControl();
-
-            Rigidbody ballRb = ball.GetComponent<Rigidbody>();
-
-            if (ballRb == null)
-            {
-                Debug.LogWarning("[MPAI] Ball has no Rigidbody.");
-                return;
-            }
-
-            ballRb.isKinematic = false;
-            ballRb.linearVelocity = Vector3.zero;
-            ballRb.angularVelocity = Vector3.zero;
-            ballRb.AddForce(direction.normalized * force, ForceMode.Impulse);
+            ball.ServerKickLooseBall(
+                cachedIdentity,
+                direction.normalized,
+                force,
+                looseBallRecontrolCooldown);
         }
 
         [Server]
@@ -396,14 +409,21 @@ namespace MultiplePlayers
         }
 
         [Server]
-        private void ServerSendMoveSpeed(float speed)
+        private void ServerSendMoveSpeed(float speed01)
         {
-            // 如果你的 MPPlayerAnimationController 里有 ServerSetMoveSpeed(float)，会自动调用。
-            // 如果没有，也不会报错。
-            SendMessage(
-                "ServerSetMoveSpeed",
-                speed,
-                SendMessageOptions.DontRequireReceiver);
+            if (animationController != null)
+            {
+                animationController.ServerSetMoveSpeed(speed01);
+            }
+        }
+
+        [Server]
+        private void ServerSetAnimationGrounded(bool grounded)
+        {
+            if (animationController != null)
+            {
+                animationController.ServerSetGrounded(grounded);
+            }
         }
     }
 }
