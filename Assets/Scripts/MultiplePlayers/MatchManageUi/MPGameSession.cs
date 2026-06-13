@@ -335,6 +335,12 @@ namespace MultiplePlayers
             nextRuleEventAllowedTime = 0d;
             ServerClearSetPieceState();
 
+            MPNetworkManager networkManager = NetworkManager.singleton as MPNetworkManager;
+            if (networkManager != null)
+            {
+                networkManager.ServerEnsureMatchBallSpawned();
+            }
+
             if (MPAIManager.Instance != null)
             {
                 MPAIManager.Instance.ServerSpawnAIsForMatch();
@@ -1084,6 +1090,8 @@ namespace MultiplePlayers
         [Server]
         private void RefreshReadyState()
         {
+            int totalSelectablePlayers = 0;
+            int totalReadyPlayers = 0;
             int required = 0;
             int ready = 0;
 
@@ -1099,15 +1107,23 @@ namespace MultiplePlayers
                     && conn.identity != null
                     && conn.identity.isLocalPlayer;
 
-                if (!includeHostInReadyCheck && isHostPlayer)
+                MPPlayerReadyState readyState =
+                    conn.identity.GetComponent<MPPlayerReadyState>();
+                MPPlayerTeamState teamState =
+                    conn.identity.GetComponent<MPPlayerTeamState>();
+
+                if (readyState == null || teamState == null || !teamState.HasValidSelection)
                 {
                     continue;
                 }
 
-                MPPlayerReadyState readyState =
-                    conn.identity.GetComponent<MPPlayerReadyState>();
+                totalSelectablePlayers++;
+                if (readyState.IsReady)
+                {
+                    totalReadyPlayers++;
+                }
 
-                if (readyState == null)
+                if (!includeHostInReadyCheck && isHostPlayer)
                 {
                     continue;
                 }
@@ -1118,6 +1134,12 @@ namespace MultiplePlayers
                 {
                     ready++;
                 }
+            }
+
+            if (required == 0 && totalSelectablePlayers > 0)
+            {
+                required = totalSelectablePlayers;
+                ready = totalReadyPlayers;
             }
 
             requiredReadyPlayers = required;

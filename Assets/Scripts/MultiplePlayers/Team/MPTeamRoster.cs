@@ -9,7 +9,6 @@ namespace MultiplePlayers
 
         [Header("MVP Limits")]
         [SerializeField] private int maxHumanPlayersPerTeam = 5;
-        [SerializeField] private bool allowSamePosition = true;
 
         private void Awake()
         {
@@ -20,7 +19,7 @@ namespace MultiplePlayers
         public bool ServerCanSelect(
             MPPlayerTeamState requester,
             MPTeamId requestedTeam,
-            MPPlayerPosition requestedPosition)
+            MPPlayerPosition _)
         {
             if (requester == null)
                 return false;
@@ -39,13 +38,6 @@ namespace MultiplePlayers
                     player.ControlType == MPControlType.Human)
                 {
                     teamCount++;
-                }
-
-                if (!allowSamePosition &&
-                    player.TeamId == requestedTeam &&
-                    player.Position == requestedPosition)
-                {
-                    return false;
                 }
             }
 

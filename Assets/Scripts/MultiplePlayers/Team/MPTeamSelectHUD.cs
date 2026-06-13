@@ -15,7 +15,6 @@ namespace MultiplePlayers
         [SerializeField] private Button redDefenderButton;
         [SerializeField] private Button redMidfielderButton;
         [SerializeField] private Button redForwardButton;
-
         [SerializeField] private Button blueGoalkeeperButton;
         [SerializeField] private Button blueDefenderButton;
         [SerializeField] private Button blueMidfielderButton;
@@ -25,73 +24,170 @@ namespace MultiplePlayers
         [SerializeField] private TMP_Text selectionText;
 
         private MPPlayerTeamState localTeamState;
+        private bool selectionLocked;
 
         private void Start()
         {
-            redGoalkeeperButton.onClick.AddListener(() =>
-                Select(MPTeamId.Red, MPPlayerPosition.Goalkeeper));
+            BindButton(redGoalkeeperButton, MPTeamId.Red, MPPlayerPosition.Goalkeeper);
+            BindButton(redDefenderButton, MPTeamId.Red, MPPlayerPosition.Defender);
+            BindButton(redMidfielderButton, MPTeamId.Red, MPPlayerPosition.Midfielder);
+            BindButton(redForwardButton, MPTeamId.Red, MPPlayerPosition.Forward);
+            BindButton(blueGoalkeeperButton, MPTeamId.Blue, MPPlayerPosition.Goalkeeper);
+            BindButton(blueDefenderButton, MPTeamId.Blue, MPPlayerPosition.Defender);
+            BindButton(blueMidfielderButton, MPTeamId.Blue, MPPlayerPosition.Midfielder);
+            BindButton(blueForwardButton, MPTeamId.Blue, MPPlayerPosition.Forward);
+            SetButtonsInteractable(false);
+        }
 
-            redDefenderButton.onClick.AddListener(() =>
-                Select(MPTeamId.Red, MPPlayerPosition.Defender));
-
-            redMidfielderButton.onClick.AddListener(() =>
-                Select(MPTeamId.Red, MPPlayerPosition.Midfielder));
-
-            redForwardButton.onClick.AddListener(() =>
-                Select(MPTeamId.Red, MPPlayerPosition.Forward));
-
-            blueGoalkeeperButton.onClick.AddListener(() =>
-                Select(MPTeamId.Blue, MPPlayerPosition.Goalkeeper));
-
-            blueDefenderButton.onClick.AddListener(() =>
-                Select(MPTeamId.Blue, MPPlayerPosition.Defender));
-
-            blueMidfielderButton.onClick.AddListener(() =>
-                Select(MPTeamId.Blue, MPPlayerPosition.Midfielder));
-
-            blueForwardButton.onClick.AddListener(() =>
-                Select(MPTeamId.Blue, MPPlayerPosition.Forward));
+        private void OnDestroy()
+        {
+            UnbindLocalTeamState();
         }
 
         private void Update()
         {
             TryFindLocalPlayer();
 
-            bool show = localTeamState != null &&
-                        MPGameSession.Instance != null &&
-                        MPGameSession.Instance.IsLobby;
+            if (localTeamState != null && localTeamState.HasValidSelection)
+            {
+                selectionLocked = true;
+            }
+
+            bool show =
+                !selectionLocked &&
+                localTeamState != null &&
+                MPGameSession.Instance != null &&
+                MPGameSession.Instance.IsLobby;
 
             if (panelRoot != null)
-                panelRoot.SetActive(show);
-
-            if (localTeamState != null && selectionText != null)
             {
-                selectionText.text =
-                    $"当前选择：{localTeamState.TeamId} / {localTeamState.Position}";
+                panelRoot.SetActive(show);
+            }
+
+            SetButtonsInteractable(show);
+
+            if (selectionText != null)
+            {
+                if (localTeamState == null)
+                {
+                    selectionText.text = "Start Host or Client first, then choose a team.";
+                }
+                else
+                {
+                    selectionText.text = localTeamState.HasValidSelection
+                        ? $"Selected: {localTeamState.TeamId} / {localTeamState.Position}"
+                        : "Choose a team and position.";
+                }
             }
         }
 
         private void TryFindLocalPlayer()
         {
             if (localTeamState != null)
+            {
                 return;
+            }
 
             if (NetworkClient.localPlayer == null)
+            {
                 return;
+            }
 
             localTeamState =
                 NetworkClient.localPlayer.GetComponent<MPPlayerTeamState>();
+
+            if (localTeamState != null)
+            {
+                localTeamState.SelectionRequestResolved += OnSelectionRequestResolved;
+            }
         }
 
         private void Select(MPTeamId team, MPPlayerPosition position)
         {
-            if (localTeamState == null)
-                TryFindLocalPlayer();
+            if (selectionLocked)
+            {
+                return;
+            }
 
             if (localTeamState == null)
+            {
+                TryFindLocalPlayer();
+            }
+
+            if (localTeamState == null)
+            {
+                if (selectionText != null)
+                {
+                    selectionText.text = "Waiting for local player...";
+                }
+
                 return;
+            }
 
             localTeamState.CmdRequestSelectTeam(team, position);
+        }
+
+        private void OnSelectionRequestResolved(bool success, string message)
+        {
+            if (!success)
+            {
+                if (selectionText != null)
+                {
+                    selectionText.text = string.IsNullOrWhiteSpace(message)
+                        ? "Selection rejected by server."
+                        : message;
+                }
+
+                return;
+            }
+
+            selectionLocked = true;
+            if (panelRoot != null)
+            {
+                panelRoot.SetActive(false);
+            }
+        }
+
+        private void BindButton(
+            Button button,
+            MPTeamId team,
+            MPPlayerPosition position)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            button.onClick.AddListener(() => Select(team, position));
+        }
+
+        private void SetButtonsInteractable(bool interactable)
+        {
+            SetInteractable(redGoalkeeperButton, interactable);
+            SetInteractable(redDefenderButton, interactable);
+            SetInteractable(redMidfielderButton, interactable);
+            SetInteractable(redForwardButton, interactable);
+            SetInteractable(blueGoalkeeperButton, interactable);
+            SetInteractable(blueDefenderButton, interactable);
+            SetInteractable(blueMidfielderButton, interactable);
+            SetInteractable(blueForwardButton, interactable);
+        }
+
+        private static void SetInteractable(Button button, bool interactable)
+        {
+            if (button != null)
+            {
+                button.interactable = interactable;
+            }
+        }
+
+        private void UnbindLocalTeamState()
+        {
+            if (localTeamState != null)
+            {
+                localTeamState.SelectionRequestResolved -= OnSelectionRequestResolved;
+                localTeamState = null;
+            }
         }
     }
 }

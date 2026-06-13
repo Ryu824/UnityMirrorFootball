@@ -9,6 +9,9 @@ namespace MultiplePlayers
 {
     public class MPMatchHUD : MonoBehaviour
     {
+        [Header("Lifecycle")]
+        [SerializeField] private bool managePhasePanels = true;
+
         [Header("Panels")]
         [SerializeField] private GameObject lobbyPanel;
         [SerializeField] private GameObject timerPanel;
@@ -150,13 +153,16 @@ RefreshCenterMessage(session);
 
         private void RefreshLobby(MPGameSession session)
         {
-            SetPanelActive(lobbyPanel, true);
-            SetPanelActive(timerPanel, false);
-            SetPanelActive(scorePanel, false);
-            SetPanelActive(gameOverPanel, false);
+            if (managePhasePanels)
+            {
+                SetPanelActive(lobbyPanel, true);
+                SetPanelActive(timerPanel, false);
+                SetPanelActive(scorePanel, false);
+                SetPanelActive(gameOverPanel, false);
+            }
 
             bool isServerProcess = NetworkServer.active;
-            bool isClientOnly = NetworkClient.isConnected && !NetworkServer.active;
+            bool canUseReadyButton = NetworkClient.isConnected;
 
             if (readyInfoText != null)
             {
@@ -167,8 +173,8 @@ RefreshCenterMessage(session);
 
             if (readyButton != null)
             {
-                readyButton.gameObject.SetActive(isClientOnly);
-                readyButton.interactable = isClientOnly && readyState != null;
+                readyButton.gameObject.SetActive(canUseReadyButton);
+                readyButton.interactable = canUseReadyButton && readyState != null;
             }
 
             if (readyButtonText != null)
@@ -193,10 +199,13 @@ RefreshCenterMessage(session);
 
         private void RefreshPlaying(MPGameSession session)
         {
-            SetPanelActive(lobbyPanel, false);
-            SetPanelActive(timerPanel, true);
-            SetPanelActive(scorePanel, true);
-            SetPanelActive(gameOverPanel, false);
+            if (managePhasePanels)
+            {
+                SetPanelActive(lobbyPanel, false);
+                SetPanelActive(timerPanel, true);
+                SetPanelActive(scorePanel, true);
+                SetPanelActive(gameOverPanel, false);
+            }
 
             if (elapsedText != null)
             {
@@ -216,10 +225,13 @@ RefreshCenterMessage(session);
 
         private void RefreshGameOver(MPGameSession session)
         {
-            SetPanelActive(lobbyPanel, false);
-            SetPanelActive(timerPanel, false);
-            SetPanelActive(scorePanel, true);
-            SetPanelActive(gameOverPanel, true);
+            if (managePhasePanels)
+            {
+                SetPanelActive(lobbyPanel, false);
+                SetPanelActive(timerPanel, false);
+                SetPanelActive(scorePanel, true);
+                SetPanelActive(gameOverPanel, true);
+            }
 
             if (scoreText != null)
             {
@@ -228,7 +240,9 @@ RefreshCenterMessage(session);
 
             if (gameOverText != null)
             {
-                gameOverText.text = "GAME OVER";
+                gameOverText.text = shutdownText == null
+                    ? $"GAME OVER\nClosing in {session.ShutdownText}s"
+                    : "GAME OVER";
             }
 
             if (shutdownText != null)
@@ -292,6 +306,17 @@ RefreshCenterMessage(session);
             }
 
             SetPanelActive(centerMessagePanel, true);
+        }
+
+        public void SetManagedByExternalRoot(bool managedExternally)
+        {
+            managePhasePanels = !managedExternally;
+
+            if (managedExternally)
+            {
+                SetPanelActive(lobbyPanel, false);
+                SetPanelActive(gameOverPanel, false);
+            }
         }
     }
 }

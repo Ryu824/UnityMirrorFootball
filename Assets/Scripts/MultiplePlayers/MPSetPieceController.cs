@@ -16,7 +16,6 @@ namespace MultiplePlayers
         [SerializeField] private float maxChargeTime = 1.2f;
 
         [Header("Aim")]
-        [SerializeField] private float aimYawSpeed = 180f;
         [SerializeField] private bool useCameraForwardWhenAvailable = true;
 
         private bool localCharging;

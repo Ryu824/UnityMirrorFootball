@@ -75,11 +75,11 @@ MonoBehaviour:
   headlessStartMode: 0
   editorAutoStart: 0
   sendRate: 60
-  offlineScene: 
-  onlineScene: 
+  offlineScene: MainMenuScene
+  onlineScene: MultiplePlayers
   offlineSceneLoadDelay: 0
-  transport: {fileID: 0}
-  networkAddress: localhost
+  transport: {fileID: 2254227540278697326}
+  networkAddress: 127.0.0.1
   maxConnections: 20
   disconnectInactiveConnections: 0
   disconnectInactiveTimeout: 60
@@ -114,7 +114,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4337576820780419628}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c2d37f63b1ca87f4aa9b6e68aae319bd, type: 3}
   m_Name: 

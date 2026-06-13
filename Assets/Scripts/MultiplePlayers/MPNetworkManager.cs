@@ -2,11 +2,16 @@ using UnityEngine;
 
 #if USE_MIRROR
 using Mirror;
+using UnityEngine.SceneManagement;
 
 namespace MultiplePlayers
 {
     public class MPNetworkManager : NetworkManager
     {
+        [Header("Scenes")]
+        [SerializeField] private string defaultOfflineScene = "MainMenuScene";
+        [SerializeField] private string defaultOnlineScene = "MultiplePlayers";
+
         [Header("Player Spawn")]
         [SerializeField] private string playerNamePrefix = "Player";
 
@@ -18,12 +23,17 @@ namespace MultiplePlayers
         private GameObject spawnedBall;
         private int serverPlayerTeamIndex;
 
+        private void Awake()
+        {
+            EnsureSceneAssignments();
+            EnsureTransportAssignment();
+        }
+
         public override void OnStartServer()
         {
             base.OnStartServer();
 
             serverPlayerTeamIndex = 0;
-            SpawnMatchBall();
         }
 
         [Server]
@@ -44,6 +54,17 @@ namespace MultiplePlayers
             if (ballPrefab != null)
             {
                 NetworkClient.RegisterPrefab(ballPrefab);
+            }
+        }
+
+        public override void OnServerSceneChanged(string sceneName)
+        {
+            base.OnServerSceneChanged(sceneName);
+
+            if (!string.IsNullOrWhiteSpace(onlineScene)
+                && sceneName == onlineScene)
+            {
+                ServerEnsureMatchBallSpawned();
             }
         }
 
@@ -99,7 +120,7 @@ namespace MultiplePlayers
         }
 
         [Server]
-        private void SpawnMatchBall()
+        public void ServerEnsureMatchBallSpawned()
         {
             if (ballPrefab == null || spawnedBall != null)
             {
@@ -109,6 +130,29 @@ namespace MultiplePlayers
             Quaternion spawnRotation = Quaternion.Euler(ballSpawnEulerAngles);
             spawnedBall = Instantiate(ballPrefab, ballSpawnPosition, spawnRotation);
             NetworkServer.Spawn(spawnedBall);
+        }
+
+        private void EnsureSceneAssignments()
+        {
+            if (string.IsNullOrWhiteSpace(offlineScene))
+            {
+                offlineScene = defaultOfflineScene;
+            }
+
+            if (string.IsNullOrWhiteSpace(onlineScene))
+            {
+                onlineScene = defaultOnlineScene;
+            }
+        }
+
+        private void EnsureTransportAssignment()
+        {
+            if (transport != null)
+            {
+                return;
+            }
+
+            transport = GetComponent<Transport>();
         }
     }
 }

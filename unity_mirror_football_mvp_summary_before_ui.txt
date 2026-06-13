@@ -1,0 +1,590 @@
+Unity + Mirror 多人足球游戏 MVP 项目总结（截止正式 UI 功能开发前）
+
+用途：给新对话、Codex、毕业设计说明使用。本文记录当前项目结构、已完成功能、脚本职责、服务器权威架构，以及进入正式 UI 开发前需要注意的问题。
+
+============================================================
+一、项目基本信息
+============================================================
+
+项目类型：Unity 多人足球游戏 MVP。
+网络框架：Mirror。
+开发目标：完成一个可联机、可开始比赛、可移动/踢球/运球、可进球/出界/定位球、可选队/补齐 AI 的最小可玩足球游戏。
+
+核心原则：服务器权威。
+- 客户端主要负责输入、相机、UI、表现。
+- 服务器负责比赛状态、比分、倒计时、进球、出界、定位球、球重置、AI 生成、AI 决策。
+- 客户端不能直接决定比分、比赛阶段、进球结果、出界归属、定位球归属或 AI 行为。
+
+当前项目已经从“基础 Mirror 联机测试”进入“玩法整合完成，准备制作正式 UI 和继续排查 AI”的阶段。
+
+============================================================
+二、整体网络架构
+============================================================
+
+当前支持三种运行模式：
+
+1. Host
+- 同一个进程同时运行 Server 和 Client。
+- Host 玩家参与比赛。
+- Host 可以在所有玩家 Ready 后点击 Start Game。
+- 适合本机多开测试。
+
+2. Client
+- 连接 Host 或专用 Server。
+- Client 提交输入和请求，接收服务器同步。
+- Client 需要先选择队伍和职位，再手动 Ready。
+
+3. Server
+- 只运行服务器，不作为玩家。
+- 不需要选队 UI、不需要第三人称相机、不需要比赛 HUD。
+- 负责权威逻辑、规则判断、AI 生成和同步。
+
+常用测试方式：
+- 本机 localhost / 127.0.0.1。
+- 默认端口一般为 7777。
+- 多开 Build 分别作为 Host、Client、Server 观察同步结果。
+
+后续 UI 阶段确定采用两场景方案：
+1. MainMenuScene：主菜单、设置、网络启动界面。
+2. GameScene：比赛场地、玩家、球、TeamSystem、AI、选队面板、Lobby、比赛 HUD、结算界面。
+
+推荐 Mirror 场景配置：
+- Offline Scene = MainMenuScene。
+- Online Scene = GameScene。
+- MainMenuScene 中保留 NetworkManager / MPNetworkManager。
+- 不要创建多个 NetworkManager。
+
+============================================================
+三、比赛状态 MPMatchState
+============================================================
+
+当前比赛状态：
+
+1. Lobby
+- 玩家连接、选队、选职位、Ready。
+- 所有真人玩家 Ready 后，Host 可以开始比赛。
+
+2. Playing
+- 正常比赛。
+- 玩家可以移动、跳跃、运球、踢球。
+- AI 可以追球、回位、踢球或传球。
+- 服务器处理倒计时、进球、出界和比分。
+
+3. RulePause
+- 规则暂停阶段。
+- 常用于进球、出界后的短暂停顿。
+- 玩家和 AI 不应继续正常比赛行动。
+
+4. SetPiece
+- 定位球阶段。
+- 用于界外球、角球、球门球等重新开始比赛。
+- 当前设计中定位球执行者保留给真人玩家。
+- AI 在该阶段停止行动。
+
+5. TimeUp
+- 比赛时间结束。
+- 停止常规控制，准备显示比赛结束。
+
+6. Closing
+- 收尾阶段。
+- 显示 GameOver，之后可退出或返回菜单。
+
+============================================================
+四、当前已完成功能
+============================================================
+
+1. Host / Client / Server 启动。
+2. Ready / Start 流程。
+3. MPMatchState：Lobby、Playing、RulePause、SetPiece、TimeUp、Closing。
+4. 120 分钟倒计时。
+5. 比分显示和记录。
+6. 中心提示。
+7. GameOver 显示。
+8. 进球检测。
+9. 出界检测。
+10. 角球、球门球、界外球、定位球基础逻辑。
+11. 网络球 MPNetworkBall。
+12. 玩家移动。
+13. 玩家跳跃。
+14. 第三人称相机。
+15. 玩家运球。
+16. 玩家踢球。
+17. 人形模型接入。
+18. Idle / Run / Jump 动画。
+19. 选队系统。
+20. 玩家必须先选择队伍和职位才可以 Ready。
+21. AI 框架接入。
+22. AI 自动补齐到 5v5。
+23. AI 追球。
+24. AI 回位。
+25. AI 简单传球或向前踢。
+26. AI 只在 Playing 阶段行动。
+27. RulePause / SetPiece / TimeUp / Closing 阶段 AI 停止。
+
+============================================================
+五、核心数据类型
+============================================================
+
+1. MPMatchState
+- 比赛阶段枚举。
+- 包括 Lobby、Playing、RulePause、SetPiece、TimeUp、Closing。
+
+2. MPTeamId
+- 队伍枚举。
+- 用于红队、蓝队或未选择状态。
+
+3. MPPlayerPosition
+- 职位枚举。
+- 当前用于 GK、DF、MF、FW 等。
+
+4. MPControlType
+- 控制类型枚举。
+- 用于区分真人玩家和 AI。
+
+后续选队 UI 采用组合按钮：
+- Red GK
+- Red DF
+- Red MF
+- Red FW
+- Blue GK
+- Blue DF
+- Blue MF
+- Blue FW
+
+============================================================
+六、主要对象结构
+============================================================
+
+1. TeamSystem 推荐挂载：
+- NetworkIdentity
+- MPGameSession
+- MPAIManager
+- MPTeamRoster
+- MPTeamUtility
+
+注意：TeamSystem 子物体不要再挂 NetworkIdentity。
+
+2. Player Prefab 推荐结构：
+PlayerRoot
+- NetworkIdentity
+- Rigidbody
+- Collider
+- NetworkTransform / NetworkRigidbody（按当前项目实际配置）
+- MPNetworkPlayerController
+- MPPlayerBallController
+- MPPlayerReadyState
+- MPPlayerTeamState
+- MPPlayerAnimationController
+- 人形模型子物体
+- Animator
+
+注意：
+- Player Prefab 根物体有 NetworkIdentity。
+- 子物体不要挂 NetworkIdentity。
+- 本地玩家启用输入和相机。
+- 非本地玩家不读取输入。
+- ServerOnly 不启用本地相机和玩家 UI。
+
+3. MPAIPlayerPrefab 推荐结构：
+- NetworkIdentity
+- Rigidbody / Collider
+- MPAIPlayerController
+- MPPlayerTeamState 或 AI 队伍状态相关脚本
+- MPPlayerAnimationController
+- 人形模型子物体
+- Animator
+
+注意：
+- MPAIPlayerPrefab 必须加入 NetworkManager 的 Spawnable Prefabs。
+- 根物体要有 NetworkIdentity。
+- 子物体不能有 NetworkIdentity。
+- 如果使用 MPPlayerAnimationController，建议删除 NetworkAnimator。
+
+4. NetworkBall 推荐结构：
+- NetworkIdentity
+- Rigidbody
+- Collider
+- NetworkTransform / NetworkRigidbody（按当前项目实际配置）
+- MPNetworkBall
+
+5. 边界对象：
+- 球门 Trigger。
+- 边线 Trigger。
+- 底线 Trigger。
+- 挂 MPBoundaryReporter。
+- 服务器报告给 MPGameSession 后处理进球和出界。
+
+============================================================
+七、脚本职责
+============================================================
+
+1. MPNetworkManager
+- 管理 Host / Client / Server 启动。
+- 管理玩家 Prefab。
+- 管理网络对象生成。
+- 管理 Spawnable Prefabs。
+- 后续配合 Offline Scene / Online Scene 完成主菜单到比赛场景的切换。
+- 注意不要创建多个 NetworkManager。
+
+2. MPGameSession
+- 比赛总控制器。
+- 维护 MPMatchState。
+- 处理 Ready / Start。
+- 控制 120 分钟倒计时。
+- 记录比分。
+- 处理进球、出界、角球、球门球、界外球、定位球。
+- 控制 RulePause、SetPiece、TimeUp、Closing。
+- 触发 GameOver。
+- 调用或通知 AI 生成。
+- 是比赛规则核心，必须保持服务器权威。
+
+3. MPPlayerReadyState
+- 挂在 Player Prefab 上。
+- 保存玩家 Ready 状态。
+- 客户端点击 Ready 后通过 Command 请求服务器修改。
+- 未选队时不能 Ready。
+
+4. MPMatchHUD
+- 当前比赛 HUD。
+- 显示 Ready / Start、比分、倒计时、中心提示、GameOver。
+- 后续建议只保留比赛中 HUD 功能，不再负责主菜单、网络启动、Lobby 和选队。
+
+5. MPNetworkLauncherUI
+- 当前旧版 Host / Client / Server / Stop 启动 UI。
+- 后续建议由 MainMenuScene 的 MPNetworkMenuUI 替代。
+- 可保留备份，但正式 UI 中应禁用，避免多个启动 UI 冲突。
+
+6. MPBoundaryReporter
+- 挂在边界 Trigger 上。
+- 检测球是否进入进球区或出界区。
+- 把事件报告给 MPGameSession。
+- 实际判定由服务器处理。
+
+7. MPNetworkBall
+- 网络球控制。
+- 处理球的服务器权威状态。
+- 支持球重置。
+- 支持玩家踢球。
+- 支持 AI 使用 ServerKickLooseBall。
+- 维护球权或最后触球状态。
+- 与进球、出界、定位球逻辑有关。
+
+8. MPPlayerBallController
+- 玩家侧球交互。
+- 处理运球输入和踢球输入。
+- 检测玩家与球的交互范围。
+- 向 MPNetworkBall 请求控制或踢球。
+- 历史问题：DribbleSensor 检测范围过大或位置过高时，曾导致球围绕玩家转动；后续采用更直接的前方锁定/控制思路简化 MVP。
+
+9. MPNetworkPlayerController
+- 玩家移动、跳跃、朝向控制。
+- 处理 WASD、跳跃、地面检测、Rigidbody 移动。
+- 本地输入必须用 isLocalPlayer 判断。
+- 非本地玩家不能读取键盘鼠标输入。
+
+10. MPThirdPersonCameraController
+- 本地玩家第三人称相机。
+- 跟随本地玩家。
+- 处理鼠标视角。
+- 只应为本地玩家启用。
+- ServerOnly 不启用。
+
+11. MPPlayerAnimationController
+- 控制 Idle / Run / Jump 动画。
+- 同步动画参数。
+- AI 可调用 ServerSetMoveSpeed / ServerSetGrounded。
+- 如果使用该脚本，建议删除 NetworkAnimator，避免 Animator 未绑定和重复同步。
+
+12. MPSetPieceController
+- 定位球执行逻辑。
+- 处理界外球、角球、球门球等重新开始比赛流程。
+- 与 MPGameSession 和 MPNetworkBall 交互。
+- SetPiece 阶段 AI 应停止常规行动。
+
+13. MPPlayerTeamState
+- 挂在 Player Prefab 上。
+- 同步玩家队伍、职位、控制类型。
+- 将选队系统映射到比赛规则队伍。
+- 表示玩家是否完成选队。
+- 客户端点击选队按钮后，应通过 Command 请求服务器设置。
+
+14. MPTeamRoster
+- 管理队伍名单。
+- 验证职位是否可选。
+- 判断玩家是否完成选队。
+- 判断某队某职位是否被占用。
+- 为 Ready 逻辑提供选队完成判断。
+
+15. MPTeamSelectHUD
+- 当前已有的选队 UI。
+- 提供红蓝队和职位选择。
+- 当前问题：选队 UI 一直存在；部分按钮不可点击。
+- 后续计划：重构为 MPTeamSelectPanel，进入 GameScene 后弹出，选择成功后关闭，不允许重新打开，不自动 Ready。
+
+16. MPAIManager
+- 服务器补齐 AI。
+- 生成 AI。
+- 让每队自动补齐到 5 人。
+- 查找最佳追球 AI。
+- 管理 AI 行为入口。
+
+17. MPAIPlayerController
+- AI 状态机。
+- 当前状态：Idle、ReturnToFormation、ChaseBall、KickOrPass。
+- AI 不控球，只追球、回位、传球或向前踢。
+- 不使用 NavMesh，不使用外部 AI 插件。
+- AI 决策由服务器处理。
+
+18. MPAIFormationPoint
+- AI 阵型点。
+- 用于 AI 回位。
+- 配合 MPAIManager 给不同队伍和职位分配站位。
+
+19. MPTeamUtility
+- 队伍工具类。
+- 提供红蓝队球门坐标、进攻方向、队伍辅助判断。
+- 用于 AI 和比赛规则逻辑。
+
+============================================================
+八、AI 当前设计
+============================================================
+
+AI 目标：
+- 5v5 足球 MVP。
+- 每队自动补齐到 5 人。
+- 真人玩家选择队伍和职位后，AI 补齐剩余位置。
+- AI 行为简单、稳定、可控。
+
+AI 技术路线：
+- FSM + 简单行为树思想。
+- 不使用 NavMesh。
+- 不使用外部 AI 插件。
+- 服务器直接控制 AI 决策和行动。
+
+AI 状态：
+1. Idle：待机。
+2. ReturnToFormation：回到阵型点。
+3. ChaseBall：最佳追球 AI 追向球。
+4. KickOrPass：接近球后向前踢或传球。
+
+AI 阶段限制：
+- Playing：AI 可以行动。
+- Lobby / RulePause / SetPiece / TimeUp / Closing：AI 停止。
+
+后续排查重点：
+- AI 是否正确生成。
+- AI Prefab 是否在 Spawnable Prefabs。
+- AI 根物体是否只有一个 NetworkIdentity。
+- AI 子物体是否没有 NetworkIdentity。
+- AI Rigidbody / Collider 是否配置正确。
+- AI 是否只在服务器执行决策。
+- AI 动画参数是否正确同步。
+
+============================================================
+九、UI 开发前状态与下一阶段目标
+============================================================
+
+当前已有 UI：
+- MPNetworkLauncherUI：基础 Host / Client / Server / Stop。
+- MPMatchHUD：Ready / Start、比分、倒计时、中心提示、GameOver。
+- MPTeamSelectHUD：基础选队和职位选择。
+
+当前 UI 问题：
+1. 选队 UI 会一直存在于屏幕上。
+2. 希望进入游戏后弹出选队面板，选择完成后关闭。
+3. 选队完成后等待房主开始游戏。
+4. 选队 UI 只有个别按钮可点击，其他按钮不可点击。
+5. 缺少正式主菜单。
+6. 缺少正式网络启动界面。
+7. Lobby、设置、结算、比赛提示 UI 还需要整理和美化。
+
+已确定 UI 改造方案：
+1. 使用两场景方案。
+2. MainMenuScene：开始游戏、设置、退出游戏、网络启动界面。
+3. GameScene：选队面板、Lobby、比赛 HUD、结算界面。
+4. 主菜单点击“开始游戏”后进入网络启动界面。
+5. 网络启动界面选择 Start Host / Start Client / Start Server。
+6. Client 默认 IP 为 127.0.0.1。
+7. 玩家选队后不自动 Ready。
+8. 选队完成后关闭选队面板，进入 Lobby 等待手动 Ready。
+9. 选队面板关闭后不允许重新打开。
+10. ServerOnly 不显示选队、不显示相机、不显示 HUD。
+
+建议新增或重构脚本：
+1. MPMainMenuUI：主菜单、设置入口、退出游戏。
+2. MPNetworkMenuUI：Host / Client / Server 启动，IP 输入框默认 127.0.0.1，Back 返回主菜单。
+3. MPGameUIRoot：GameScene UI 总控，管理 TeamSelectPanel、LobbyPanel、MatchHUDPanel、GameOverPanel。
+4. MPTeamSelectPanel：弹窗式选队面板，组合按钮一次提交 team + position，服务器确认后关闭。
+5. MPLobbyPanel：显示玩家队伍、职位、Ready 状态，提供 Ready 按钮和 Host 的 Start Game 按钮。
+6. MPSettingsUI：第一版只做空壳，后续接入音量、鼠标灵敏度、全屏/窗口。
+
+============================================================
+十、选队按钮不可点击的排查方向
+============================================================
+
+重点排查：
+1. 透明 Image / Panel 遮挡按钮。
+2. alpha = 0 但 blocksRaycasts = true 的不可见 UI 挡住点击。
+3. 父物体 CanvasGroup.interactable = false。
+4. 父物体 CanvasGroup.blocksRaycasts 设置错误。
+5. Button.interactable 被代码设成 false 后没有恢复。
+6. Button OnClick 没有绑定、绑定对象丢失或参数错误。
+7. EventSystem 缺失或重复。
+8. Canvas Sorting Order 或层级导致上层 UI 拦截点击。
+9. 按钮其实点击了，但服务器拒绝，UI 没有反馈。
+
+统一面板显示/隐藏建议：
+显示：
+- SetActive(true)
+- CanvasGroup.alpha = 1
+- CanvasGroup.interactable = true
+- CanvasGroup.blocksRaycasts = true
+
+隐藏：
+- CanvasGroup.alpha = 0
+- CanvasGroup.interactable = false
+- CanvasGroup.blocksRaycasts = false
+- SetActive(false)
+
+不要只用 alpha 隐藏 UI。
+
+============================================================
+十一、整体架构概括
+============================================================
+
+可以按五层理解：
+
+1. 网络连接层
+- MPNetworkManager。
+- Mirror NetworkManager。
+- Host / Client / Server。
+- 玩家 Prefab 和网络对象生成。
+- Spawnable Prefabs。
+- 场景切换。
+
+2. 比赛规则层
+- MPGameSession。
+- MPMatchState。
+- MPBoundaryReporter。
+- MPSetPieceController。
+- MPNetworkBall。
+- 负责比赛状态、比分、时间、进球、出界、定位球、GameOver。
+
+3. 角色与交互层
+- MPNetworkPlayerController。
+- MPPlayerBallController。
+- MPPlayerReadyState。
+- MPPlayerTeamState。
+- MPPlayerAnimationController。
+- MPThirdPersonCameraController。
+- 负责移动、跳跃、相机、运球、踢球、Ready、队伍职位、动画。
+
+4. 队伍与 AI 层
+- MPTeamRoster。
+- MPTeamUtility。
+- MPAIManager。
+- MPAIPlayerController。
+- MPAIFormationPoint。
+- 负责选队验证、队伍工具、AI 补齐、AI 状态机和阵型点。
+
+5. UI 表现层
+- 当前：MPNetworkLauncherUI、MPMatchHUD、MPTeamSelectHUD。
+- 后续：MPMainMenuUI、MPNetworkMenuUI、MPGameUIRoot、MPTeamSelectPanel、MPLobbyPanel、MPSettingsUI、GameOverPanel。
+
+简化数据流：
+玩家输入 → 本地脚本读取输入 → Command 请求服务器 → 服务器验证 → 服务器修改权威状态 → SyncVar / RPC / NetworkTransform 同步到客户端 → 客户端 UI 和表现层更新。
+
+比赛规则流：
+球进入边界或球门 → MPBoundaryReporter 报告 → MPGameSession 服务器判断 → 修改比分或进入定位球状态 → MPNetworkBall 重置或进入定位球位置 → UI 显示提示 → 比赛恢复 Playing。
+
+选队 Ready 流：
+进入 GameScene → 弹出 TeamSelectPanel → 点击 Red GK / Red DF / Blue GK 等组合按钮 → MPPlayerTeamState 请求服务器设置队伍和职位 → MPTeamRoster 验证 → 服务器确认并同步 → TeamSelectPanel 关闭 → LobbyPanel 显示 → 玩家手动 Ready → MPPlayerReadyState 请求服务器设置 Ready → MPGameSession 判断所有真人玩家 Ready → Host 点击 Start Game → 比赛进入 Playing。
+
+AI 流：
+比赛准备或开始 → MPAIManager 检查两队人数 → 服务器生成 AI 补齐 5v5 → AI 分配队伍、职位、阵型点 → Playing 阶段 MPAIPlayerController 决策 → AI 追球 / 回位 / 踢球或传球 → 非 Playing 阶段 AI 停止。
+
+============================================================
+十二、进入 UI 阶段前的开发原则
+============================================================
+
+1. 不要重写核心比赛逻辑。
+2. 不要破坏服务器权威。
+3. UI 只负责显示和提交请求。
+4. UI 不直接修改比赛状态、比分、球位置、AI 状态。
+5. 先保证流程正确，再美化界面。
+6. 新 UI 尽量替代旧 OnGUI 或临时 UI。
+7. 旧 MPNetworkLauncherUI 可以保留备份，但正式场景中避免和新 UI 同时工作。
+8. 旧 MPTeamSelectHUD 应重构为弹窗式 MPTeamSelectPanel。
+9. MPMatchHUD 后续只负责比赛内 HUD，不再承担主菜单和选队。
+10. 复杂设置功能可以后做，先做空壳设置界面。
+11. ServerOnly 只运行服务器逻辑，不显示玩家 UI。
+12. Host 和 Client 才显示玩家可交互 UI。
+13. 本地玩家生成是异步的，GameScene UI 要等待 NetworkClient.localPlayer。
+14. 不要在按钮点击 StartHost / StartClient 后立刻假设本地玩家存在。
+15. 不要在 UI 物体上添加 NetworkIdentity。
+
+============================================================
+十三、下一阶段开发目标
+============================================================
+
+第一优先级：
+- MainMenuScene。
+- 正式主菜单。
+- 网络启动界面。
+- Start Host / Start Client / Start Server。
+- IP 默认 127.0.0.1。
+- 退出游戏。
+- 设置界面空壳。
+
+第二优先级：
+- GameScene 的 MPGameUIRoot。
+- Host/Client 进入 GameScene 后自动弹出 TeamSelectPanel。
+- ServerOnly 隐藏全部玩家 UI。
+- TeamSelectPanel 组合按钮。
+- 选择成功后关闭 TeamSelectPanel。
+- 显示 LobbyPanel。
+- 玩家手动 Ready。
+- Host 显示 Start Game。
+
+第三优先级：
+- 比赛 HUD 美化。
+- 进球、出界、定位球中心提示 UI。
+- GameOver / 结算界面。
+
+第四优先级：
+- 设置界面接入音量。
+- 鼠标灵敏度。
+- 全屏 / 窗口。
+- 分辨率。
+- 多窗口测试默认 1280x720 Windowed。
+
+第五优先级：
+- 继续排查 AI 生成。
+- AI 移动。
+- AI 动画同步。
+- AI 与比赛阶段联动。
+
+============================================================
+十四、给后续新对话或 Codex 的一句话总结
+============================================================
+
+这是一个 Unity + Mirror 多人足球游戏 MVP。项目坚持服务器权威：比赛规则、比分、进球、出界、定位球、球重置、AI 生成和 AI 决策都由服务器处理，客户端主要提交输入和显示同步结果。当前已经完成 Host/Client/Server、Ready/Start、比赛状态、倒计时、比分、进球出界、定位球、网络球、玩家移动跳跃、第三人称相机、运球踢球、人形动画、选队系统和 AI 框架。下一阶段准备使用两场景方案制作正式 UI：MainMenuScene 负责主菜单和网络启动，GameScene 负责选队弹窗、Lobby、比赛 HUD 和结算；选队 UI 要从常驻 HUD 改为进入游戏后弹出、选择成功后关闭、进入 Lobby 手动 Ready，并修复按钮不可点击的问题。
+
+============================================================
+十五、外部参考资料
+============================================================
+
+1. Mirror NetworkManager 文档：
+https://mirror-networking.gitbook.io/docs/manual/components/network-manager
+
+2. Mirror NetworkIdentity 文档：
+https://mirror-networking.gitbook.io/docs/manual/components/network-identity
+
+3. Mirror SyncVars 文档：
+https://mirror-networking.gitbook.io/docs/manual/guides/synchronization/syncvars
+
+4. Unity Canvas Scaler 文档：
+https://docs.unity3d.com/Packages/com.unity.ugui@2.0/manual/script-CanvasScaler.html
+
+5. Unity Graphic Raycaster 文档：
+https://docs.unity3d.com/Packages/com.unity.ugui@1.0/manual/script-GraphicRaycaster.html
