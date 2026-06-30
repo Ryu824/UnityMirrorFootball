@@ -2,9 +2,9 @@ Unity + Mirror 多人足球游戏 MVP 项目总结（当前项目结构修正版
 
 用途：给新对话、Codex、毕业设计说明或项目交接使用。本文根据 Assets/Scripts/MultiplePlayers/ 下当前脚本整理，说明项目结构、脚本职责、网络架构、比赛规则、队伍系统、AI 系统和 UI 流程。
 
-============================================================
+
 一、项目基本信息
-============================================================
+
 
 项目类型：Unity 多人在线足球游戏 MVP。
 网络框架：Mirror。
@@ -17,9 +17,9 @@ Unity + Mirror 多人足球游戏 MVP 项目总结（当前项目结构修正版
 
 当前项目已经从“玩法 MVP”进入“玩法 + UI 流程整合完成”的状态。当前主要主菜单 UI 由 Assets/Scripts/MultiplePlayers/UI/MPSimpleMainMenuUI.cs 负责；旧版 OnGUI、MPMainMenuUI/MPNetworkMenuUI 等脚本仍保留为备份、兼容或后续网络启动界面参考。
 
-============================================================
+
 二、目录结构概览
-============================================================
+
 
 主要代码目录：Assets/Scripts/MultiplePlayers/
 
@@ -64,9 +64,9 @@ Unity + Mirror 多人足球游戏 MVP 项目总结（当前项目结构修正版
 - MPRuntimeUIFactory.cs
 - MPUIVisibilityUtility.cs
 
-============================================================
+
 三、运行模式与场景架构
-============================================================
+
 
 当前支持三种 Mirror 运行模式：
 
@@ -101,14 +101,14 @@ Unity + Mirror 多人足球游戏 MVP 项目总结（当前项目结构修正版
 - 选队面板、Lobby 面板、比赛 HUD、GameOver 显示。
 
 MPNetworkManager 默认场景配置：
-- defaultOfflineScene = MainMenuScene。
-- defaultOnlineScene = MultiplePlayers。
+- defaultOfflineScene  MainMenuScene。
+- defaultOnlineScene  MultiplePlayers。
 - Awake 中如果 NetworkManager 的 offlineScene / onlineScene 未设置，会自动使用默认值。
 - 不应该在多个场景中创建多个 NetworkManager。
 
-============================================================
+
 四、比赛状态 MPMatchState
-============================================================
+
 
 MPMatchState 定义在 MPFootballTypes.cs 中。
 
@@ -147,9 +147,9 @@ MPMatchState 定义在 MPFootballTypes.cs 中。
 - 服务器通过 RPC 通知客户端退出。
 - Host / Server 停止网络运行。
 
-============================================================
+
 五、核心数据类型
-============================================================
+
 
 1. MPTeam
 - 比赛规则层队伍枚举。
@@ -197,9 +197,9 @@ MPMatchState 定义在 MPFootballTypes.cs 中。
 - Free、Dribbling、Kicked。
 - 用于区分自由球、被玩家控制、被踢出后的状态。
 
-============================================================
+
 六、主要场景对象建议结构
-============================================================
+
 
 1. NetworkManager 对象
 - NetworkIdentity 不需要单独挂在 UI 上。
@@ -281,9 +281,9 @@ MPMatchState 定义在 MPFootballTypes.cs 中。
 - 配置 teamId、position、index。
 - MPAIManager 用这些点为 AI 分配出生点和回位目标。
 
-============================================================
+
 七、已实现功能总览
-============================================================
+
 
 1. 网络连接
 - Host / Client / Server 启动。
@@ -412,9 +412,9 @@ MPMatchState 定义在 MPFootballTypes.cs 中。
 - 自动创建 Canvas、CanvasScaler、GraphicRaycaster、EventSystem。
 - MPUIVisibilityUtility 统一使用 SetActive + CanvasGroup alpha/interactable/blocksRaycasts 显示隐藏面板。
 
-============================================================
+
 八、脚本职责详解
-============================================================
+
 
 1. MPNetworkManager
 - 继承 Mirror NetworkManager。
@@ -493,8 +493,8 @@ MPMatchState 定义在 MPFootballTypes.cs 中。
 
 10. MPUIVisibilityUtility
 - UI 显示隐藏工具。
-- Show：SetActive(true)，CanvasGroup alpha=1、interactable=true、blocksRaycasts=true。
-- Hide：CanvasGroup alpha=0、interactable=false、blocksRaycasts=false，然后 SetActive(false)。
+- Show：SetActive(true)，CanvasGroup alpha1、interactabletrue、blocksRaycaststrue。
+- Hide：CanvasGroup alpha0、interactablefalse、blocksRaycastsfalse，然后 SetActive(false)。
 - 避免透明 UI 拦截点击。
 
 11. MPNetworkLauncherUI
@@ -597,7 +597,7 @@ MPMatchState 定义在 MPFootballTypes.cs 中。
 
 23. MPTeamRoster
 - 队伍选择验证。
-- 限制每队真人玩家数量，默认 maxHumanPlayersPerTeam=5。
+- 限制每队真人玩家数量，默认 maxHumanPlayersPerTeam5。
 - allowSamePosition 默认 true，允许多个真人选择同一位置。
 - 可检查所有真人玩家是否都有有效队伍选择。
 
@@ -645,9 +645,9 @@ MPMatchState 定义在 MPFootballTypes.cs 中。
 - 提供本方球门和对方球门坐标。
 - 提供 MPTeamId 到 MPTeam 的转换。
 
-============================================================
+
 九、核心数据流
-============================================================
+
 
 1. 网络启动流
 当前主菜单本地进入流程：MainMenuScene -> MPSimpleMainMenuUI 点击 Start Game -> 加载 MultiplePlayers 场景 -> 客户端等待本地玩家生成。
@@ -670,9 +670,9 @@ MainMenuScene 当前主要使用 MPSimpleMainMenuUI。
 MultiplePlayers 场景使用 MPGameUIRoot 管理 TeamSelectPanel、LobbyPanel、MatchHUD。
 UI 只提交请求和显示结果，不直接修改比赛权威状态。
 
-============================================================
+
 十、服务器权威设计总结
-============================================================
+
 
 服务器权威内容：
 - 玩家加入和玩家对象生成。
@@ -695,9 +695,9 @@ UI 只提交请求和显示结果，不直接修改比赛权威状态。
 - HUD 显示。
 - 接收 SyncVar / RPC / NetworkTransform / NetworkRigidbody 同步后的表现。
 
-============================================================
+
 十一、当前实现特点和注意事项
-============================================================
+
 
 1. 正式 UI 和旧 UI 并存
 - 当前主要主菜单 UI 是 MPSimpleMainMenuUI。
@@ -731,7 +731,7 @@ UI 只提交请求和显示结果，不直接修改比赛权威状态。
 
 7. 球同步要求
 - MPNetworkBall 会检查 NetworkRigidbodyReliable。
-- 推荐 NetworkRigidbodyReliable.syncDirection = ServerToClient。
+- 推荐 NetworkRigidbodyReliable.syncDirection  ServerToClient。
 - 服务器驱动球物理，客户端只看同步结果。
 
 8. 定位球执行者限制
@@ -743,14 +743,14 @@ UI 只提交请求和显示结果，不直接修改比赛权威状态。
 - 这是空模板脚本。
 - 项目实际队伍类型在 MPFootballTypes.cs 中。
 
-============================================================
+
 十二、可以向别人介绍的一句话总结
-============================================================
+
 
 这是一个 Unity + Mirror 实现的服务器权威多人在线足球游戏 MVP。项目当前主要使用 MainMenuScene 和 MultiplePlayers 两场景流程，包含主菜单、设置界面、选队弹窗、Lobby Ready、比赛 HUD、比分计时、GameOver；玩法上实现了玩家移动跳跃、第三人称相机、运球、地滚球和挑球、进球出界、界外球、角球、球门球、定位球发球，以及服务器生成 AI 自动补齐到 5v5 并进行简单追球、回位、传球、射门或解围。MPNetworkMenuUI 等网络启动脚本仍保留，可作为后续联机入口或备用流程。
 
-============================================================
+
 十三、毕业设计/项目说明可用概括
-============================================================
+
 
 本项目基于 Unity 和 Mirror 网络框架开发多人在线足球游戏原型，采用服务器权威架构。服务器负责比赛状态、规则判定、比分计时、球状态、定位球、AI 生成和 AI 决策，客户端负责输入、摄像机和 UI 表现。项目实现了 Host、Client、Server 三种运行方式，玩家可通过主菜单输入 IP 和端口启动网络连接，进入比赛场景后选择红蓝队与球员位置，在 Lobby 中 Ready，并由 Host 开始比赛。比赛中玩家可以进行第三人称移动、跳跃、运球和蓄力踢球；系统可以检测进球、边线出界、底线出界，并根据最后触球队伍判定界外球、角球或球门球。服务器会在比赛开始时为双方自动生成 AI 球员补齐到 5v5，AI 具有回到阵型、追球、传球、射门和解围等基础行为。UI 部分包含主菜单、网络启动、选队面板、Lobby 面板、比赛 HUD、比分时间显示、中心规则提示和比赛结束提示，使项目形成完整的在线足球游戏 MVP 流程。
